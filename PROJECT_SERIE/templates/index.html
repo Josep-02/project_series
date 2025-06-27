@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mantenimiento de Personas</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Mantenimiento de Personas</h1>
+
+    <h2>Crear/Actualizar Persona</h2>
+    <form id="personaForm">
+        <label for="personaId">ID (para actualizar):</label>
+        <input type="number" id="personaId" placeholder="Deja vacío para crear"><br><br>
+
+        <label for="nombre">Nombre:</label>
+        <input type="text" id="nombre" required><br><br>
+
+        <label for="apellido">Apellido:</label>
+        <input type="text" id="apellido" required><br><br>
+
+        <label for="edad">Edad:</label>
+        <input type="number" id="edad" required><br><br>
+
+        <button type="submit">Guardar</button>
+        <button type="button" onclick="clearForm()">Limpiar Formulario</button>
+    </form>
+
+    <h2>Lista de Personas</h2>
+    <table id="personaTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Apellido</th>
+                <th>Edad</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            </tbody>
+    </table>
+
+    <script>
+        const API_URL = '/api/personas';
+        const personaForm = document.getElementById('personaForm');
+        const personaTableBody = document.querySelector('#personaTable tbody');
+        const personaIdInput = document.getElementById('personaId');
+        const nombreInput = document.getElementById('nombre');
+        const apellidoInput = document.getElementById('apellido');
+        const edadInput = document.getElementById('edad');
+
+        async function fetchPersonas() {
+            try {
+                const response = await fetch(API_URL);
+                const personas = await response.json();
+                renderPersonas(personas);
+            } catch (error) {
+                console.error('Error al obtener personas:', error);
+            }
+        }
+
+        function renderPersonas(personas) {
+            personaTableBody.innerHTML = '';
+            personas.forEach(persona => {
+                const row = personaTableBody.insertRow();
+                row.insertCell().textContent = persona.id;
+                row.insertCell().textContent = persona.nombre;
+                row.insertCell().textContent = persona.apellido;
+                row.insertCell().textContent = persona.edad;
+
+                const actionsCell = row.insertCell();
+                const editButton = document.createElement('button');
+                editButton.textContent = 'Editar';
+                editButton.onclick = () => loadPersonaForEdit(persona);
+                actionsCell.appendChild(editButton);
+
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Eliminar';
+                deleteButton.onclick = () => deletePersona(persona.id);
+                actionsCell.appendChild(deleteButton);
+            });
+        }
+
+        async function savePersona(event) {
+            event.preventDefault();
+            const id = personaIdInput.value;
+            const nombre = nombreInput.value;
+            const apellido = apellidoInput.value;
+            const edad = parseInt(edadInput.value);
+
+            const data = { nombre, apellido, edad };
+
+            try {
+                let response;
+                if (id) {
+                    // Actualizar
+                    response = await fetch(`${API_URL}/${id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(data)
+                    });
+                } else {
+                    // Crear
+                    response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(data)
+                    });
+                }
+
+                if (response.ok) {
+                    alert('Operación exitosa');
+                    clearForm();
+                    fetchPersonas();
+                } else {
+                    const errorData = await response.json();
+                    alert(`Error: ${errorData.message || response.statusText}`);
+                }
+            } catch (error) {
+                console.error('Error al guardar persona:', error);
+                alert('Error al guardar persona.');
+            }
+        }
+
+        function loadPersonaForEdit(persona) {
+            personaIdInput.value = persona.id;
+            nombreInput.value = persona.nombre;
+            apellidoInput.value = persona.apellido;
+            edadInput.value = persona.edad;
+        }
+
+        async function deletePersona(id) {
+            if (confirm('¿Estás seguro de que quieres eliminar esta persona?')) {
+                try {
+                    const response = await fetch(`${API_URL}/${id}`, {
+                        method: 'DELETE'
+                    });
+                    if (response.ok) {
+                        alert('Persona eliminada exitosamente');
+                        fetchPersonas();
+                    } else {
+                        const errorData = await response.json();
+                        alert(`Error: ${errorData.message || response.statusText}`);
+                    }
+                } catch (error) {
+                    console.error('Error al eliminar persona:', error);
+                    alert('Error al eliminar persona.');
+                }
+            }
+        }
+
+        function clearForm() {
+            personaIdInput.value = '';
+            nombreInput.value = '';
+            apellidoInput.value = '';
+            edadInput.value = '';
+        }
+
+        personaForm.addEventListener('submit', savePersona);
+        fetchPersonas(); // Cargar personas al cargar la página
+    </script>
+</body>
+</html>
